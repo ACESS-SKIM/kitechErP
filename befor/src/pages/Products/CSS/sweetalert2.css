@@ -1,0 +1,19 @@
+.sweetalert-container {
+  font-size: 1.5em;
+  z-index: 2000;
+}
+
+.sweetalert-confirm-button {
+  /* SweetAlert2 스타일 오버라이딩 */
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 2000;
+}
+
+.sweetalert-confirm-button:hover {
+  background-color: #111111;
+}

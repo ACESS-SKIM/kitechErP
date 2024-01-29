@@ -1,0 +1,185 @@
+.main_container {
+  position: relative;
+  width: 100%;
+  height: screen;
+  top: 80px;
+}
+.main_menu_container {
+  width: 1536px;
+  background-color: orange;
+  height: 50px;
+  text-align: center;
+  position: fixed;
+  z-index: 5;
+  overflow: hidden;
+}
+.main_menu {
+  width: 80%;
+  height: 50px;
+  background-color:darkcyan;
+  margin: auto;
+  text-align: center;
+}
+.main_menu_button {
+  width: 100px;
+  background: none;
+  border: none;
+  color: white;
+  margin-top: 12.5px;
+  margin-left: 60px;
+  margin-right: 60px;
+}
+.main_menu_list {
+  float: left;
+  margin-left: 20px;;
+}
+.sub_list_info {
+  height: 100;
+  margin-top: 12.5px;
+}
+.sub_list_news {
+  height: 00;
+  margin-top: 12.5px;
+  background-color: burlywood;
+  visibility:hidden;
+}
+.sub_list_recycle {
+  height: 00;
+  margin-top: 12.5px;
+  background-color: burlywood;
+  overflow: hidden;
+}
+.sub_list_company {
+  height: 00;
+  margin-top: 12.5px;
+  background-color: burlywood;
+  overflow: hidden;
+}
+.sub_list_service {
+  height: 00;
+  margin-top: 12.5px;
+  background-color: burlywood;
+  overflow: hidden;
+}
+
+.main_sub_container {
+  width: 100%;
+  height: 400px;
+  float: left;
+  margin-top: 50px;
+  background-color: white;
+  background-image: url('../assets/recycle_panel2.png');
+  background-position-y: -50px;
+  background-position-x: 130px;
+  background-repeat: no-repeat;
+  text-align: center;
+}
+.main_subin_container {
+  margin-top: 100px;
+}
+.text_style {
+  font-size: 30px;
+  color: black;
+  font-weight: bold;
+}
+.tool_container {
+  width: 100%;
+  height: 300px;
+  background-color: white;
+  float: left;
+}
+.tool_sub_container {
+  width: 100%;
+  height: 250px;
+  background-color: white;
+  margin-top: 25px;
+}
+.tool1 {
+  position: relative;
+  width: 20%;
+  height: 200px;
+  background-color: black;
+  float: left;
+  margin-top: 25px;
+  margin-left: 61px;
+  border-radius: 15%;
+  text-align: center;
+  background-image: url('../assets/recycle_light.png');
+  background-size: 450px;
+  background-position-x: -110px;
+  background-position-y: -40px;
+  font-weight: bold;
+  border-width: 0.5px;
+  border-color: black;
+}
+.tool2 {
+  width: 20%;
+  height: 200px;
+  background-color: black;
+  float: left;
+  margin-top: 25px;
+  margin-left: 61px;
+  border-radius: 15%;
+  text-align: center;
+  background-image: url('../assets/recycle_nature.png');
+  background-size: 360px;
+  background-position-x: -35px;
+  background-position-y: -15px;
+  opacity: 0.9;
+  font-weight: bold;
+  color: white;
+  border-width: 0.5px;
+  border-color: black;
+}
+.tool3 {
+  width: 20%;
+  height: 200px;
+  background-color: black;
+  float: left;
+  margin-top: 25px;
+  margin-left: 61px;
+  border-radius: 15%;
+  text-align: center;
+  background-image: url('../assets/recycle_tree.png');
+  background-size: 400px;
+  background-position-y: -10px;
+  background-position-x: -40px;
+  opacity: 0.9;
+  font-weight: bold;
+  color: white;
+  border-width: 0.5px;
+  border-color: black;
+}
+.tool4 {
+  width: 20%;
+  height: 200px;
+  background-color:black;
+  float: right;
+  margin-top: 25px;
+  margin-right: 61px;
+  border-radius: 15%;
+  text-align: center;
+  background-image: url('../assets/recycle_earth.png');
+  background-size: 300px;
+  background-position: center;
+  opacity: 0.9;
+  font-weight: bold;
+  color: white;
+  border-width: 0.5px;
+  border-color: black;
+}
+.tool_text {
+  position: relative;
+  margin-top: 20px;
+  color: white;
+  -webkit-text-stroke-width: 0.7px;
+  -webkit-text-stroke-color: black;
+  z-index: 3;
+  font-size: 25px;
+}
+.tool_sub_text {
+  position: relative;
+  margin-top: 20px;
+  color: white;
+  z-index: 3;
+}

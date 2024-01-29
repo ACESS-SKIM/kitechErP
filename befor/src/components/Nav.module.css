@@ -1,0 +1,15 @@
+.mainNav {
+  max-width: 1536px;
+  align-items: center;
+  padding: 1rem;
+  width: 100%;
+  position: relative;
+  background-color: white;
+  position: fixed;
+  z-index: 2;
+}
+.object {
+  position: absolute;
+  right: 0px;
+  top: 15px;
+}

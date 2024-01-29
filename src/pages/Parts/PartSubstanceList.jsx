@@ -13,7 +13,7 @@ import { Close, ControlPointOutlined } from '@mui/icons-material';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { collection, getDocs, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Swal from 'sweetalert2';
@@ -46,7 +46,6 @@ export default function PartSubstanceList({ closeEvent, initialPartID, initialMa
   const [currentPartID, setCurrentPartID] = useState(initialPartID);
   const [currentMaterialID, setCurrentMaterialID] = useState(initialMaterialID);
   useEffect(() => {
-    console.log("Received material id: ", currentMaterialID);
   }, [currentMaterialID]);
   const [editPartSubstanceOpen, setEditPartSubstanceOpen] = useState(false);
   const [editSubstance, setEditSubstance] = useState(null);
@@ -69,7 +68,6 @@ export default function PartSubstanceList({ closeEvent, initialPartID, initialMa
   }, [currentPartID, currentMaterialID]);
 
   const getSubstances = () => {
-    console.log(currentPartID, currentMaterialID)
     const substanceCollectionRef = collection(db, 'parts', currentPartID, 'materials', currentMaterialID, 'substances');
     return onSnapshot(substanceCollectionRef, (snapshot) => {
       setRows(snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
@@ -137,6 +135,16 @@ export default function PartSubstanceList({ closeEvent, initialPartID, initialMa
     handleEditPartSubstanceOpen();
   };
 
+  const tableHeadCellStyle = {
+    align: 'center',
+    style: { minWidth: '50px', borderRight: '1px solid #111111', backgroundColor: '#6F6F6F', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem' },
+  };
+
+  const tableBodyStyle = {
+    align: 'center',
+    style: { minWidth: '50px', borderRight: '1px solid #111111', borderBottom: '1px solid #111111' },
+  };
+
   return (
     <>
       <div>
@@ -181,42 +189,41 @@ export default function PartSubstanceList({ closeEvent, initialPartID, initialMa
         </Modal>
       </div>
 
-      {rows.length > 0 && (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <Typography gutterBottom variant="h5" component="div" sx={{ padding: '20px' }}>
-            등록물질 리스트
-          </Typography>
+      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <Typography gutterBottom variant="h5" component="div" sx={{ padding: '20px' }}>
+          등록물질 리스트
+        </Typography>
 
-          <Divider sx={{ mt: 2 }} />
+        <Divider sx={{ mt: 2 }} />
 
-          <TableContainer sx={{ maxHeight: 700, maxWidth: 1600 }}>
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
-                    Substance Name
-                  </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
-                    CAS Number
-                  </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
-                    Substance Mass(g)
-                  </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
-                    Action
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
+        <TableContainer sx={{ maxHeight: 700, maxWidth: 1600 }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                <TableCell {...tableHeadCellStyle}>
+                  Substance Name
+                </TableCell>
+                <TableCell {...tableHeadCellStyle}>
+                  CAS Number
+                </TableCell>
+                <TableCell {...tableHeadCellStyle}>
+                  Substance Mass(g)
+                </TableCell>
+                <TableCell align="center" sx={{ minWidth: '50px', backgroundColor: '#6F6F6F', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem', }}>
+                  Action
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.length > 0 ? (
+                rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
                   return (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                      <TableCell align="left">{row.substancename}</TableCell>
-                      <TableCell align="left">{row.casnumber}</TableCell>
-                      <TableCell align="left">{row.substancemass}</TableCell>
-                      <TableCell align="left">
-                        <Stack spacing={2} direction="row">
+                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id} sx={{ '& .MuiTableCell-root': { borderBottom: '1px solid #111111' } }}>
+                      <TableCell {...tableBodyStyle}>{row.substancename}</TableCell>
+                      <TableCell {...tableBodyStyle}>{row.casnumber}</TableCell>
+                      <TableCell {...tableBodyStyle}>{row.substancemass}</TableCell>
+                      <TableCell align="center">
+                        <Stack spacing={2} direction="row" justifyContent="center">
                           <EditIcon
                             style={{ fontSize: '20px', color: 'blue', cursor: 'pointer' }}
                             className="cursor-pointer"
@@ -239,22 +246,27 @@ export default function PartSubstanceList({ closeEvent, initialPartID, initialMa
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 20, 50]}
-            component="div"
-            count={rows.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </Paper>
-      )}
+                })
+              ) : (
+                <TableRow>
+                  <TableCell align="center" colSpan={4}>
+                    No data available.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 20, 50]}
+          component="div"
+          count={rows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </Paper>
 
       {/* {rows.length === 0 && (
         <>
