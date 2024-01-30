@@ -9,16 +9,16 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Divider from '@mui/material/Divider';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import { db } from '../../api/firebase';
-import { collection, getDocs, addDoc, doc, query, where, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, query, where, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import './CSS/sweetalert2.css';
 import ViewMaterialListInProduct from './ViewMaterialList';
-import { Modal } from 'flowbite';
+import Modal from '@mui/material/Modal';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
-// 모달창 스타일
 const style = {
   position: 'absolute',
   top: '50%',
@@ -43,36 +43,99 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
   const [partReused, setReused] = useState("");
   const [partMemo, setMemo] = useState("");
   const partsRef = collection(db, 'parts');
+  const productPartsRef = collection(db, 'productparts');
   const [partNames, setPartNames] = useState([]);
   const [partsInProduct, setPartsInProduct] = useState([]);
   const [openMaterialModal, setOpenMaterialModal] = useState(false);
-  const [currentPartID, setCurrentPartID] = useState(initialPartID);
-  const [currentMaterialId, setCurrentMaterialId] = useState(null);
+  const [productId, setProductId] = useState(initialPartID);
+  const [currentPartId, setCurrentPartId] = useState(null);
+  const [totalWeightInTable, setTotalWeightInTable] = useState(0);
+  const [totalWeightInProduct, setTotalWeightInProduct] = useState(0);
+  const [currentUserUid, setCurrentUserUid] = useState(null);
+  const prevParts = useRef(partsInProduct);
 
   useEffect(() => {
-    fetchPartNames();
-  }, []);
+    if (currentUserUid) {
+      fetchPartNames();
+    }
+  }, [currentUserUid]);
 
   useEffect(() => {
-    if (currentPartID) {
-      const productDocRef = doc(db, 'products', currentPartID);
+    if (productId) {
+      const productDocRef = doc(db, 'products', productId);
       const unsubscribe = onSnapshot(collection(productDocRef, 'parts'), (snapshot) => {
         const newPartsInProduct = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setPartsInProduct(newPartsInProduct);
-        setRows(newPartsInProduct); // 여기서 rows 상태를 업데이트합니다.
+        setRows(newPartsInProduct);
       });
-
-      // Clean-up function
       return () => unsubscribe();
     }
-  }, [currentPartID]);
+  }, [productId]);
 
+
+  useEffect(() => {
+    let hasChanges = false;
+
+    // `partsInProduct`의 이전 값과 비교하여 변경사항이 있는지 확인
+    if (prevParts.current.length !== partsInProduct.length) {
+      hasChanges = true;
+    } else {
+      for (let i = 0; i < partsInProduct.length; i++) {
+        if (prevParts.current[i].totalWeight !== partsInProduct[i].totalWeight) {
+          hasChanges = true;
+          break;
+        }
+      }
+    }
+
+    // 변경사항이 있을 경우에만 totalWeight 계산
+    if (hasChanges) {
+      calculateTotalWeightInTable();
+    }
+
+    // 현재 `partsInProduct` 값을 `prevParts`에 저장
+    prevParts.current = partsInProduct;
+  }, [partsInProduct]);
+
+  useEffect(() => {
+    if (initialPartID) {
+      fetchTotalWeightInProduct(initialPartID);
+    }
+  }, [initialPartID]);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUserUid(user.uid);
+        console.log("Logged-in user's UID:", user.uid);
+      } else {
+        // No user is signed in.
+        setCurrentUserUid(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Part Name 드롭박스 (중복은 1번만 표기)
   const fetchPartNames = async () => {
     try {
-      const partsSnapshot = await getDocs(partsRef);
-      const partsData = [...new Set(partsSnapshot.docs.map((doc) => doc.data().name))];
-      partsData.sort();
-      setPartNames(partsData);
+      // 'parts' 컬렉션에서 데이터 가져오기
+      const q1 = query(partsRef, where('allowuid', 'array-contains', currentUserUid));
+      const partsSnapshot = await getDocs(q1);
+      const partsDataFromParts = partsSnapshot.docs.map((doc) => doc.data().name);
+
+      // 'productparts' 컬렉션에서 데이터 가져오기
+      const q2 = query(productPartsRef, where('allowuid', '==', currentUserUid));
+      const productPartsSnapshot = await getDocs(q2);
+      const partsDataFromProductParts = productPartsSnapshot.docs.map((doc) => doc.data().name);
+
+      // 두 데이터를 병합하고 중복 제거
+      const combinedData = [...new Set([...partsDataFromParts, ...partsDataFromProductParts])];
+      combinedData.sort();
+      setPartNames(combinedData);
+
     } catch (error) {
       console.error('Error fetching parts names:', error);
       Swal.fire({
@@ -86,13 +149,22 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
     }
   };
 
+  // 모든 Serial Name 항목 불러오기
   const fetchSerialNames = async (partName) => {
     try {
       const partsSnapshot = await getDocs(partsRef);
-      const selectedPartData = partsSnapshot.docs.filter((doc) => doc.data().name === partName);
-      if (selectedPartData.length > 0) {
-        const serialNames = selectedPartData.map((doc) => doc.data().serialname);
-        setMaterialNames(serialNames);
+      const productPartsSnapshot = await getDocs(productPartsRef);
+
+      const selectedPartDataFromParts = partsSnapshot.docs.filter((doc) => doc.data().name === partName);
+      const selectedPartDataFromProductParts = productPartsSnapshot.docs.filter((doc) => doc.data().name === partName);
+
+      const serialNamesFromParts = selectedPartDataFromParts.map((doc) => doc.data().serialname);
+      const serialNamesFromProductParts = selectedPartDataFromProductParts.map((doc) => doc.data().serialname);
+
+      // 두 리스트를 합치고 중복을 제거
+      const combinedSerialNames = [...new Set([...serialNamesFromParts, ...serialNamesFromProductParts])];
+      if (combinedSerialNames.length > 0) {
+        setMaterialNames(combinedSerialNames);
       } else {
         console.error('No matching part found.');
       }
@@ -109,39 +181,32 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
     }
   };
 
-  // 'weight', 'reused', 'memo'를 조회하는 함수
-  const fetchAdditionalInfo = async (partName, serialName, partQuantity) => {
+  // parts, productparts 컬렉션에서 데이터 가져오기
+  const fetchPartData = async (partName, partSerialName) => {
     try {
-      const partsSnapshot = await getDocs(partsRef);
-      const selectedPart = partsSnapshot.docs.find((doc) =>
-        doc.data().name === partName &&
-        doc.data().serialname === serialName &&
-        doc.data().quantity === partQuantity
-      );
-      if (selectedPart) {
-        setWeight(selectedPart.data().weight);
-        setReused(selectedPart.data().reused);
-        setMemo(selectedPart.data().memo);
-      } else {
-        console.error('No matching part found.');
-      }
-    } catch (error) {
-      console.error('Error fetching additional information:', error);
-    }
-  };
+      // 우선 'parts' 컬렉션에서 데이터를 찾아보기
+      let q = query(collection(db, 'parts'), where('name', '==', partName), where('serialname', '==', partSerialName));
+      let partDocSnapshot = await getDocs(q);
 
-  // parts에서 데이터 가져오기
-  const fetchPartData = async (partName) => {
-    try {
-      const partDocSnapshot = await getDocs(query(collection(db, 'parts'), where('name', '==', partName)));
+      // 'parts'에서 데이터를 찾지 못했을 경우 'productparts'에서 시도
+      if (partDocSnapshot.empty) {
+        q = query(collection(db, 'productparts'), where('name', '==', partName), where('serialname', '==', partSerialName));
+        partDocSnapshot = await getDocs(q);
+        if (partDocSnapshot.empty) {
+          console.error('No matching part found in both collections.');
+          return null;
+        }
+      }
+
       const partDocData = partDocSnapshot.docs[0].data();
       const partDocId = partDocSnapshot.docs[0].id;
+      const collectionName = partDocSnapshot.metadata.fromCache ? 'productparts' : 'parts';
 
-      const materialsSnapshot = await getDocs(collection(db, `parts/${partDocId}/materials`));
+      const materialsSnapshot = await getDocs(collection(db, `${collectionName}/${partDocId}/materials`));
       const materialsData = await Promise.all(materialsSnapshot.docs.map(async (doc) => {
         const materialData = doc.data();
         const materialId = doc.id;
-        const substancesSnapshot = await getDocs(collection(db, `parts/${partDocId}/materials/${materialId}/substances`));
+        const substancesSnapshot = await getDocs(collection(db, `${collectionName}/${partDocId}/materials/${materialId}/substances`));
         const substancesData = substancesSnapshot.docs.map((doc) => doc.data());
 
         return { ...materialData, substances: substancesData };
@@ -150,20 +215,39 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
       return { ...partDocData, materials: materialsData };
     } catch (error) {
       console.error('Error fetching part data:', error);
+      return null;
     }
   };
 
-  // products에 데이터 추가하기
+
+  const fetchTotalWeightInProduct = async (productId) => {
+    try {
+      const productDoc = doc(db, 'products', productId);
+      const productSnapshot = await getDoc(productDoc);
+
+      if (productSnapshot.exists()) {
+        const totalWeight = productSnapshot.data().weight;
+        if (totalWeight) {
+          setTotalWeightInProduct(totalWeight);
+        }
+      } else {
+        console.log('No such document!');
+      }
+    } catch (error) {
+      console.error('Error fetching product:', error);
+    }
+  };
+
+
+  // products에 데이터 추가
   const addPartDataToProduct = async (productId, partData) => {
     try {
       const productDocRef = doc(db, 'products', productId);
       const partsCollectionRef = collection(productDocRef, 'parts');
       const newPartDocRef = await addDoc(partsCollectionRef, partData);
-
       for (const material of partData.materials) {
         const materialsCollectionRef = collection(newPartDocRef, 'materials');
         const newMaterialDocRef = await addDoc(materialsCollectionRef, material);
-
         for (const substance of material.substances) {
           const substancesCollectionRef = collection(newMaterialDocRef, 'substances');
           await addDoc(substancesCollectionRef, substance);
@@ -174,10 +258,10 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
     }
   };
 
-  const handlePartChange = (e) => {
+  const handlePartChange = useCallback((e) => {
     setProductPartName(e.target.value);
     fetchSerialNames(e.target.value);
-  };
+  }, []);
 
   const handlePartSerialName = (e) => {
     setPartMaterialName(e.target.value);
@@ -185,28 +269,57 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
 
   const handlePartQuantity = (e) => {
     const quantity = e.target.value;
-
     // If the input is not a number, don't update the state
     if (isNaN(quantity)) {
       return;
     }
-
     // Otherwise, update the state with the new quantity
     setPartQuantity(quantity);
   };
 
-  // 조회 버튼을 클릭하면 실행될 함수
-  const handleFetchInfo = () => {
-    fetchAdditionalInfo(productPartName, partSerialName);
+  // 'weight', 'reused', 'memo' 조회
+  const handleFetchInfo = async () => {
+    try {
+      const q1 = query(partsRef, where('name', '==', productPartName), where('serialname', '==', partSerialName));
+      const q2 = query(productPartsRef, where('name', '==', productPartName), where('serialname', '==', partSerialName));
+
+      const partsSnapshot = await getDocs(q1);
+      const productPartsSnapshot = await getDocs(q2);
+
+      let fetchedData;
+      if (partsSnapshot.docs.length > 0) {
+        fetchedData = partsSnapshot.docs[0].data();
+      } else if (productPartsSnapshot.docs.length > 0) {
+        fetchedData = productPartsSnapshot.docs[0].data();
+      } else {
+        console.error('No matching part found.');
+        return;
+      }
+
+      setWeight(fetchedData.weight);
+      setReused(fetchedData.reused);
+      setMemo(fetchedData.memo);
+    } catch (error) {
+      console.error('Error fetching additional information:', error);
+    }
   };
 
   // "부품등록" 버튼 클릭 이벤트 처리기
   const handleAddPart = async () => {
-    const partData = await fetchPartData(productPartName);
+    const partData = await fetchPartData(productPartName, partSerialName); // 부품데이터 가져오기
     partData.quantity = partQuantity; // parts 하위컬렉션에 quantity 추가
     partData.totalWeight = partData.weight * partQuantity; // 무게 계산
-    await addPartDataToProduct(currentPartID, partData);
-    setPartsInProduct((prevParts) => [...prevParts, { ...partData, id: currentPartID }])
+    // 총 무게 체크 (partData.totalWeight : 'totalWeightInTable' + 추가할 무게 고려)
+    if (totalWeightInTable + partData.totalWeight > totalWeightInProduct) {
+      alert("부품의 총 무게가 제품 무게를 초과하였습니다.");
+      return;
+    }
+
+    // Existing logic to add to 'products'
+    await addPartDataToProduct(productId, partData);
+
+    // Update the local state with the new part
+    setPartsInProduct((prevParts) => [...prevParts, { ...partData, id: productId }])
   };
 
   const handleChangePage = (event, newPage) => {
@@ -219,15 +332,13 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
   };
 
   const handleOpenMaterialModal = (partId) => {
-    setCurrentMaterialId(partId);
+    setCurrentPartId(partId);
     setOpenMaterialModal(true);
-  }
+  };
 
   const handleCloseMaterialModal = () => {
     setOpenMaterialModal(false);
-    setCurrentMaterialId(null);
   };
-
 
   const deletePart = (productId, partId) => {
     Swal.fire({
@@ -261,6 +372,22 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
     });
   };
 
+  const calculateTotalWeightInTable = () => {
+    const totalWeight = partsInProduct.reduce((sum, part) => sum + part.totalWeight, 0);
+    setTotalWeightInTable(totalWeight);
+  };
+
+  const tableCellStyles = {
+    align: 'center',
+    style: { minWidth: '50px' },
+    sx: { background: '#6F6F6F', color: 'Black', borderRight: '1px solid #111111', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem' }
+  };
+
+  const tableCellStyles2 = {
+    align: 'center',
+    style: { minWidth: '50px', borderRight: '1px solid #111111', borderBottom: '1px solid #111111' },
+  };
+
   return (
     <>
       {/* 제품 내 부품등록 팝업 제목부 */}
@@ -268,7 +395,6 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
       <Typography variant="h4" align="center" sx={{ mb: 4 }}>
         Add Parts In Product
       </Typography>
-
       {/* 제품 내 부품 등록 팝업 우측 상단 닫기 아이콘 */}
       <IconButton
         style={{ position: "absolute", top: '0', right: '0' }}
@@ -278,14 +404,12 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
       </IconButton>
       <Box height={20} />
       <Grid container spacing={2}>
-
         {/* 'parts' 컬렉션의 모든 문서에 대한 부품명 불러오기 */}
         <Grid item xs={3}>
           <Typography variant="subtitle1" mb={1}>
             Part Name
           </Typography>
           <TextField
-            id="outlined-basic"
             label="Select a Part Name"
             select
             variant="outlined"
@@ -306,11 +430,10 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
         {/* Serial Name 항목 */}
         <Grid item xs={3}>
           <Typography variant="subtitle1" mb={1}>
-            Serial Name
+            Part Code
           </Typography>
           <TextField
-            id="outlined-basic"
-            label="Select a Serial Name"
+            label="Select a Part Code"
             select
             variant="outlined"
             size="small"
@@ -332,7 +455,6 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
             Part Quantity
           </Typography>
           <TextField
-            id="outlined-basic"
             type="number"
             label="Enter Part Quantity"
             variant="outlined"
@@ -345,7 +467,7 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
 
         {/* "조회" 버튼 */}
         <Grid item xs={3}>
-          <Button variant="contained" onClick={handleFetchInfo}>
+          <Button variant="contained" onClick={handleFetchInfo} sx={{ mt: 4.5 }}>
             조회
           </Button>
         </Grid>
@@ -353,10 +475,9 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
         {/* 무게항목 추가 */}
         <Grid item xs={3}>
           <Typography variant="subtitle1" mb={1}>
-            Weight
+            Weight (g)
           </Typography>
           <TextField
-            id="outlined-basic"
             variant="outlined"
             size="small"
             value={partWeight}
@@ -373,7 +494,6 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
             Reused
           </Typography>
           <TextField
-            id="outlined-basic"
             variant="outlined"
             size="small"
             value={partReused}
@@ -390,7 +510,6 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
             Memo
           </Typography>
           <TextField
-            id="outlined-basic"
             variant="outlined"
             size="small"
             value={partMemo}
@@ -401,110 +520,118 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
           />
         </Grid>
 
-        {/* Submit 버튼 */}
-        <Grid item xs={3}>
-          <Typography variant="h5" align="center">
-            <Button variant="contained" onClick={handleAddPart} >
-              부품등록
-            </Button>
-          </Typography>
+        {/* 부품등록 버튼 */}
+        <Grid item xs>
+          <Button variant="contained" onClick={handleAddPart} sx={{ mt: 4.5, mr: 2 }}>
+            부품등록
+          </Button>
         </Grid>
       </Grid>
       <Box sx={{ m: 3 }} />
       <Divider sx={{ mt: 2 }} />
 
-      {/* Material View 버튼 클릭 시 모달창 Open 구현 */}
-      <Modal
-        open={openMaterialModal}
-        // onClose={handleClose}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style}>
-          <ViewMaterialListInProduct
-            closeEvent={handleCloseMaterialModal}
-            productId={currentPartID}
-            partId={currentMaterialId} />
-        </Box>
-      </Modal>
+      {/* Material View Open */}
+      {openMaterialModal && (
+        <Modal
+          open={openMaterialModal}
+          aria-labelledby="modal-modal-title"
+          aria-describedby="modal-modal-description"
+        >
+          <Box sx={style}>
+            <ViewMaterialListInProduct
+              open={openMaterialModal}
+              closeEvent={handleCloseMaterialModal}
+              productId={productId}
+              partId={currentPartId}
+            />
+          </Box>
+        </Modal>
+      )}
 
-      {/* 테이블 헤더부분 */}
-      <TableContainer sx={{ maxHeight: 700, maxWidth: 1600 }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none' }}>
-                Part Name
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Serial Name
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Reused Part
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Weight | Total(g)
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Quantity
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Registrated Date
-              </TableCell>
-              <TableCell align='center' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderRight: 'none', borderLeft: 'none' }}>
-                Memo
-              </TableCell>
-              <TableCell align='left' style={{ minWidth: '100px' }} sx={{ background: 'white', color: 'Black', border: '1px solid gray', borderLeft: 'none' }}>
-                Action
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.length > 0 ? (
-              rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((part, index) => (
-                <TableRow key={index}>
-                  <TableCell align="center">{part.name}</TableCell>
-                  <TableCell align="center">{part.serialname}</TableCell>
-                  <TableCell align="center">{part.reused}</TableCell>
-                  <TableCell align="center">{`${part.weight} | ${part.totalWeight}`}</TableCell>
-                  <TableCell align="center">{part.quantity}</TableCell>
-                  <TableCell align="center">
-                    {new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(part.date))}
-                  </TableCell>
-                  <TableCell align="center">{part.memo}</TableCell>
-                  <TableCell align="center">
-                    <Stack spacing={2} direction="row">
-                      <ListAltIcon
-                        style={{
-                          fontSize: "20px",
-                          color: "blue",
-                          cursor: "pointer",
-                        }}
-                        className="cursor-pointer"
-                        onClick={() => handleOpenMaterialModal(part.id)}
-                      />
-                      <DeleteIcon
-                        style={{
-                          fontSize: "20px",
-                          color: "darkred",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => deletePart(currentPartID, part.id)}
-                      />
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
+      {/* 무게 정보 표시 */}
+      <Box position="relative" sx={{ maxHeight: 700, maxWidth: 1600 }}>
+        <Typography variant="h10" position="absolute" right={0} top={-25}>
+          {totalWeightInProduct !== undefined ? `무게정보 : ${totalWeightInTable} / ${totalWeightInProduct}` : "Loading..."}
+        </Typography>
+
+        {/* 테이블 헤더 */}
+        <TableContainer sx={{ maxHeight: 700, maxWidth: 1600 }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No data available.
+                <TableCell {...tableCellStyles}>
+                  Part Name
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Serial Name
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Reused Part
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Weight | Total(g)
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Quantity
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Registrated Date
+                </TableCell>
+                <TableCell {...tableCellStyles}>
+                  Memo
+                </TableCell>
+                <TableCell align="center" sx={{ minWidth: '50px', backgroundColor: '#6F6F6F', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem', }}>
+                  Action
                 </TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {rows.length > 0 ? (
+                rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((part, index) => (
+                  <TableRow key={index}>
+                    <TableCell {...tableCellStyles2}>{part.name}</TableCell>
+                    <TableCell {...tableCellStyles2}>{part.serialname}</TableCell>
+                    <TableCell {...tableCellStyles2}>{part.reused}</TableCell>
+                    <TableCell {...tableCellStyles2}>{`${part.weight} | ${part.totalWeight}`}</TableCell>
+                    <TableCell {...tableCellStyles2}>{part.quantity}</TableCell>
+                    <TableCell {...tableCellStyles2}>
+                      {new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(part.date))}
+                    </TableCell>
+                    <TableCell {...tableCellStyles2}>{part.memo}</TableCell>
+                    <TableCell align="center" sx={{ borderBottom: '1px solid #111111' }}>
+                      <Stack spacing={2} direction="row" justifyContent="center">
+                        <ListAltIcon
+                          style={{
+                            fontSize: "20px",
+                            color: "blue",
+                            cursor: "pointer",
+                          }}
+                          className="cursor-pointer"
+                          onClick={() => handleOpenMaterialModal(part.id)}
+                        />
+                        <DeleteIcon
+                          style={{
+                            fontSize: "20px",
+                            color: "darkred",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => deletePart(productId, part.id)}
+                        />
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    No data available.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
       <TablePagination
         rowsPerPageOptions={[5, 10, 20, 50]}
         component="div"
@@ -517,5 +644,3 @@ export default function AddProductPart({ closeEvent, initialPartID }) {
     </>
   );
 }
-
-

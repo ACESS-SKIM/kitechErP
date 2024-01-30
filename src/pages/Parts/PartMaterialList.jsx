@@ -51,7 +51,6 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
   const [editMaterial, setEditMaterial] = useState(null);
   const [partSubstanceListOpen, setPartSubstanceListOpen] = useState(false);
 
-
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const handleEditPartMaterialOpen = () => setEditPartMaterialOpen(true);
@@ -60,6 +59,7 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
 
   useEffect(() => {
     if (currentPartID) {
+      console.log(currentPartID)
       const unsubscribe = getMaterials();
       return () => unsubscribe();  // cleanup on unmount
     }
@@ -149,6 +149,16 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
     setPartSubstanceListOpen(true);
   };
 
+  const tableHeadCellStyle = {
+    align: 'center',
+    style: { minWidth: '50px', borderRight: '1px solid #111111', backgroundColor: '#6F6F6F', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem' },
+  };
+
+  const tableBodyStyle = {
+    align: 'center',
+    style: { minWidth: '50px', borderRight: '1px solid #111111', borderBottom: '1px solid #111111' },
+  };
+
   return (
     <>
       <div>
@@ -174,7 +184,6 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
         </Stack>
         <Box height={10} />
       </div>
-
       <div>
         <Modal open={open} aria-labelledby="modal-modal-title" aria-describedby="modal-modal-description">
           <Box sx={style}>
@@ -199,7 +208,12 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
         </Modal>
 
         {/* Material 정보 수정 모달창 */}
-        <Modal open={editPartMaterialOpen} onClose={handleEditPartMaterialClose} aria-labelledby="modal-modal-title" aria-describedby="modal-modal-description">
+        <Modal
+          open={editPartMaterialOpen}
+          onClose={handleEditPartMaterialClose}
+          aria-labelledby="modal-modal-title"
+          aria-describedby="modal-modal-description"
+        >
           <Box sx={style}>
             <EditPartMaterial
               closeEvent={handleEditPartMaterialClose}
@@ -210,8 +224,7 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
           </Box>
         </Modal>
       </div>
-
-      {rows.length > 0 && (
+      <div>
         <Paper sx={{ width: '100%', overflow: 'hidden' }}>
           <Typography gutterBottom variant="h5" component="div" sx={{ padding: '20px' }}>
             등록소재 리스트
@@ -223,79 +236,86 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
             <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell {...tableHeadCellStyle}>
                     Material Group
                   </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell {...tableHeadCellStyle}>
                     Material Name
                   </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell {...tableHeadCellStyle}>
                     Recycled Contents
                   </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell {...tableHeadCellStyle}>
                     Recycle Type
                   </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell {...tableHeadCellStyle}>
                     Mass(g)
                   </TableCell>
-                  <TableCell align="left" style={{ minWidth: '100px' }}>
+                  <TableCell align="center" sx={{ minWidth: '50px', backgroundColor: '#6F6F6F', fontWeight: 'bold', color: '#FFFFFF', fontSize: '1rem', }}>
                     Action
                   </TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
-                {rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                  return (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                      <TableCell align="left">{row.materialgroup}</TableCell>
-                      <TableCell align="left">{row.materialname}</TableCell>
-                      <TableCell align="left">{row.recycledcontent}</TableCell>
-                      <TableCell align="left">{row.recycledtype}</TableCell>
-                      <TableCell align="left">{row.materialmass}</TableCell>
-                      <TableCell align="left">
-                        <Stack spacing={2} direction="row">
-                          {/* Action 항목 내 소재 추가 아이콘 */}
-                          <ListAltIcon
-                            style={{
-                              fontSize: "20px",
-                              color: "blue",
-                              cursor: "pointer",
-                            }}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              viewSubstancesData(row.id);
-                            }}
-                          />
-                          <EditIcon
-                            style={{ fontSize: '20px', color: 'blue', cursor: 'pointer' }}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              editMaterialData(
-                                row.id,
-                                row.materialgroup,
-                                row.materialname,
-                                row.recycledcontent,
-                                row.recycledtype,
-                                row.materialmass
-                              );
-                            }}
-                          />
-                          <DeleteIcon
-                            style={{ fontSize: '20px', color: 'darkred', cursor: 'pointer' }}
-                            onClick={() => {
-                              deleteMaterial(row.id);
-                            }}
-                          />
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {rows.length > 0 ? (
+                  rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
+                    return (
+                      <TableRow hover role="checkbox" tabIndex={-1} key={row.id} sx={{ '& .MuiTableCell-root': { borderBottom: '1px solid #111111' } }}>
+                        <TableCell {...tableBodyStyle}>{row.materialgroup}</TableCell>
+                        <TableCell {...tableBodyStyle}>{row.materialname}</TableCell>
+                        <TableCell {...tableBodyStyle}>{row.recycledcontent}</TableCell>
+                        <TableCell {...tableBodyStyle}>{row.recycledtype}</TableCell>
+                        <TableCell {...tableBodyStyle}>{row.materialmass}</TableCell>
+                        <TableCell align="center">
+                          <Stack spacing={2} direction="row" justifyContent="center">
+                            {/* Action 항목 내 소재 추가 아이콘 */}
+                            <ListAltIcon
+                              style={{
+                                fontSize: "20px",
+                                color: "blue",
+                                cursor: "pointer",
+                              }}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                viewSubstancesData(row.id);
+                              }}
+                            />
+                            <EditIcon
+                              style={{ fontSize: '20px', color: 'blue', cursor: 'pointer' }}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                editMaterialData(
+                                  row.id,
+                                  row.materialgroup,
+                                  row.materialname,
+                                  row.recycledcontent,
+                                  row.recycledtype,
+                                  row.materialmass
+                                );
+                              }}
+                            />
+                            <DeleteIcon
+                              style={{ fontSize: '20px', color: 'darkred', cursor: 'pointer' }}
+                              onClick={() => {
+                                deleteMaterial(row.id);
+                              }}
+                            />
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell align="center" colSpan={8}>
+                      No data available.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </TableContainer>
-
           <TablePagination
             rowsPerPageOptions={[5, 10, 20, 50]}
             component="div"
@@ -306,27 +326,7 @@ export default function PartMaterialList({ closeEvent, initialPartID }) {
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </Paper>
-      )}
-
-      {/* {rows.length === 0 && (
-        <>
-          <Paper sx={{ width: '98%', overflow: 'hidden', padding: '12px' }}>
-            <Box height={20} />
-            <Skeleton variant="rectangular" width={'100%'} height={30} />
-            <Box height={40} />
-            <Skeleton variant="rectangular" width={'100%'} height={60} />
-            <Box height={20} />
-            <Skeleton variant="rectangular" width={'100%'} height={60} />
-            <Box height={20} />
-            <Skeleton variant="rectangular" width={'100%'} height={60} />
-            <Box height={20} />
-            <Skeleton variant="rectangular" width={'100%'} height={60} />
-            <Box height={20} />
-            <Skeleton variant="rectangular" width={'100%'} height={60} />
-            <Box height={20} />
-          </Paper>
-        </>
-      )} */}
+      </div>
     </>
   );
 }

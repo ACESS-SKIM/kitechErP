@@ -1,0 +1,120 @@
+npx create-react-app 원하는파일명
+
+순서대로 다운받을것
+
+npm install -g yarn         															-yarn 설치
+npm install @mui/material @emotion/react @emotion/styled					-mui설치
+npm install @mui/material @mui/styled-engine-sc styled-components		-mui설치
+npm install @fontsource/roboto												-mui폰트 설치
+npm install @mui/icons-material												-mui아이콘 설치
+	||		@babel/core
+	||		@babel/eslint-parser
+	||		@babel/helper-remap-async-to-generator
+	||		@babel/plugin-syntax-typescript
+	||		@babel/plugin-transform-dotall-regex
+	||		@babel/plugin-transform-modules-commonjs
+	||		@babel/plugin-transform-react-display-name
+	||		@babel/preset-env
+	||		@babel/preset-react
+	||		@emotion/react
+	||		@emotion/styled
+	||		@heroicons/react
+	||		chart.js
+	||		eslint-config-react-app
+	||		eslint
+	||		firebase
+	||		flowbite
+	||		papaparse
+	||		react-chartjs-2
+	||		react-dom
+	||		react-icons
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+	||		@babel/core
+
+
+
+
+깔려있는 라이브러리    - : 뺄것들
+
+├── @babel/core@7.22.7
+├── @babel/eslint-parser@7.22.7
+├── @babel/helper-remap-async-to-generator@7.18.9 extraneous
+├── @babel/plugin-syntax-typescript@7.21.4 extraneous
+├── @babel/plugin-transform-dotall-regex@7.18.6 extraneous
+├── @babel/plugin-transform-modules-commonjs@7.21.2 extraneous
+├── @babel/plugin-transform-react-display-name@7.18.6 extraneous
+├── @babel/preset-env@7.21.4 extraneous
+├── @babel/preset-react@7.18.6 extraneous
+├── @emotion/react@11.10.6
+├── @emotion/styled@11.10.6
+├── @heroicons/react@1.0.6
+├── @mui/icons-material@5.11.16
+├── @mui/material@5.12.1
+├── @mui/styles@5.13.2
+├── chart.js@4.4.0
+├── eslint-config-react-app@6.0.0
+├── eslint@8.44.0
+├── firebase@9.19.1
+├── flowbite@1.6.5
+├── papaparse@5.4.1
+├── react-chartjs-2@5.2.0
+├── react-dom@18.2.0
+├── react-icons@4.8.0
+├── react-modal@3.16.1   					
+├── react-router-dom@6.10.0
+├── react-scripts@5.0.1
+├── react-to-print@2.14.15
+├── react@18.2.0
+├── styled-components@6.0.4
+├── sweetalert2@11.7.3
+├── tailwindcss@3.3.1
+├── web-vitals@2.1.4
+└── zustand@4.3.7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+npm install	@babel/core @babel/eslint-parser @babel/helper-remap-async-to-generator @babel/plugin-syntax-typescripts @babel/plugin-transform-dotall-regex @babel/plugin-transform-modules-commonjs @babel/plugin-transform-react-display-name @babel/preset-env @babel/preset-react @emotion/react @emotion/styled @heroicons/react @material-ui/core @material-ui/icons @mui/icons-material @mui/material @mui/styles  chart.js eslint-config-react-app eslint firebase flowbite papaparse react-chartjs-2 react-icons react-modal react-router-dom react-to-print styled-components sweetalert2 tailwindcss zustand

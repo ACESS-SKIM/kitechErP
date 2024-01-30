@@ -7,8 +7,8 @@ import Signup from './pages/Signup'
 import ProtectedRoute from './components/ProtectedRoute';
 import Parts from './pages/Parts/Parts';
 import Products from './pages/Products/Products';
-
-// import Modal from './components/Modal';
+import 'chart.js';
+import AddProductPartM from './pages/Products/ManualPartAdd/AddProductPartM';
 
 function App() {
   return (
@@ -21,6 +21,7 @@ function App() {
           <Route path='/signup' element={<Signup />} />
           {/* 유저정보가 맞지 않으면(로그인을 하지 않으면) url을 입력해서 강제 접속을 시도해도 / 로 이동되도록 ProtectedRoute로 Product를 감싸줌 */}
           <Route path='/product' element={<ProtectedRoute> <Products /> </ProtectedRoute>} />
+          <Route path='/partlistinproduct' element={<ProtectedRoute> <AddProductPartM /> </ProtectedRoute>} />
           <Route path='/part' element={<ProtectedRoute> <Parts /> </ProtectedRoute>} />
         </Routes>
       </AuthContextProvider>

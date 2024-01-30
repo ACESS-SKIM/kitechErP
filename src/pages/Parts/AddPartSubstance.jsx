@@ -94,7 +94,7 @@ export default function AddPartSubstance({ closeEvent, currentPartID, currentMat
           </Typography>
           <TextField
             id="outlined-basic"
-            label="Select a Name"
+            label="Select a Substance Name"
             select
             variant="outlined"
             size='small'
@@ -131,7 +131,7 @@ export default function AddPartSubstance({ closeEvent, currentPartID, currentMat
           </Typography>
           <TextField
             id="outlined-basic"
-            label="Enter Mass"
+            label="Enter Substance Mass (g)"
             variant="outlined"
             size='small'
             onChange={handlePartSubstanceMass}
